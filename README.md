@@ -4,6 +4,15 @@ A small local machine-learning project that estimates whether an applicant is in
 
 **Tech stack:** Python, PySpark, pandas, scikit-learn, Streamlit.
 
+
+## At a glance
+
+- **Task:** Binary classification of bad credit risk using 1,000 historical UCI applications.
+- **Held-out performance:** 0.805 ROC-AUC and 77.6% accuracy on 250 examples (versus 0.500 ROC-AUC and 70.0% accuracy for a majority-class baseline).
+- **What to explore:** Model comparison, ROC curve, logistic regression coefficients, and a threshold slider that updates precision, recall, F1, and the confusion matrix.
+- **Try a prediction:** Enter borrower attributes in the Streamlit form to see a model-estimated bad-risk probability. This is an educational demonstration, not a lending decision.
+
+
 ## Dataset and labels
 
 Source: [UCI Machine Learning Repository — Statlog (German Credit Data)](https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data), donated by Hans Hofmann. Citation: Hofmann, H. (1994), *Statlog (German Credit Data)*, UCI Machine Learning Repository, [doi:10.24432/C5NC77](https://doi.org/10.24432/C5NC77). UCI lists the dataset under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), which permits redistribution with attribution. The original whitespace-delimited `german.data` is checked into `data/` so training is reproducible offline. It contains 20 attributes followed by a class label. No observations have been synthesized or manually changed. The source's `german.doc` describes the attributes and codes; this README documents each ordered feature and meaning.
