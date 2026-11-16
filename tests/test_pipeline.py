@@ -1,8 +1,12 @@
+import json
+
 import pandas as pd
 import pytest
+from sklearn.model_selection import train_test_split
 
 from src.data import load_and_preprocess
-from src.model import (build_pipeline, evaluate_baseline, load_model,
+from src.model import (build_pipeline, calibration_display_data,
+                       calibration_diagnostics, evaluate_baseline, load_model,
                        threshold_metrics, train)
 from src.schema import FEATURES, TARGET, TARGET_MAPPING
 
@@ -47,6 +51,26 @@ def test_training_saves_loadable_model_and_inference(data, tmp_path):
     assert metrics["confusion_matrix"] and meta_path.exists()
     assert len(metrics["test_targets"]) == len(metrics["test_probabilities"]) == 250
     assert metrics["baseline"]["accuracy"] == 0.7
+    assert metrics["brier_score"] == pytest.approx(
+        calibration_diagnostics(metrics["test_targets"], metrics["test_probabilities"])["brier_score"]
+    )
+    assert metrics["baseline"]["brier_score"] == pytest.approx(
+        calibration_diagnostics(metrics["test_targets"], metrics["baseline"]["test_probabilities"])["brier_score"]
+    )
+    prevalence = metrics["training_prevalence_baseline"]
+    _, _, y_train, _ = train_test_split(data[FEATURES], data[TARGET],
+                                        test_size=0.25, random_state=metrics["seed"],
+                                        stratify=data[TARGET])
+    assert prevalence["predicted_bad_probability"] == pytest.approx(float(y_train.mean()))
+    assert prevalence["brier_score"] == pytest.approx(
+        calibration_diagnostics(metrics["test_targets"],
+                                [prevalence["predicted_bad_probability"]] * metrics["test_rows"])["brier_score"]
+    )
+    saved_metrics = json.loads(meta_path.read_text())
+    assert calibration_display_data(saved_metrics) == calibration_display_data(metrics)
+    assert sum(row["count"] for row in metrics["reliability_bins"]) == 250
+    assert all(row["count"] >= 20 for row in metrics["purpose_error_analysis"])
+    assert len(metrics["baseline"]["test_probabilities"]) == 250
 
 
 def test_threshold_metrics_recompute_from_probabilities():
@@ -68,10 +92,12 @@ def test_threshold_metrics_recompute_from_probabilities():
 def test_majority_baseline_uses_training_majority_and_defined_metrics():
     baseline = evaluate_baseline([[1], [2], [3], [4]], [0, 0, 0, 1],
                                  [[5], [6], [7], [8]], [0, 1, 0, 1])
-    assert baseline == {
+    assert {key: baseline[key] for key in ("accuracy", "precision", "recall", "f1", "roc_auc")} == {
         "accuracy": 0.5,
         "precision": 0.0,
         "recall": 0.0,
         "f1": 0.0,
         "roc_auc": 0.5,
     }
+    assert baseline["test_probabilities"] == [0.0, 0.0, 0.0, 0.0]
+    assert baseline["brier_score"] == pytest.approx(0.5)
